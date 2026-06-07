@@ -33,6 +33,8 @@ protected:
 	float MouseWheelRollAmount;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn|Movement")
 	float Gravity;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn|Movement", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float AirControlRatio;
 	
 private:
 	void Move(const FInputActionValue& value);
@@ -43,11 +45,13 @@ private:
 	void RollByKeyCompleted(const FInputActionValue& value);
 	void RollByMouse(const FInputActionValue& value);
 	void ApplyGravity(float DeltaSeconds);
+	void CheckGroundStatus();
 	
 	FVector3d MoveInput;
 	FVector2D LookInput;
 	float RollKeyInput;
 	float FallSpeed;
+	bool bIsOnGround;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Pawn|Camera")

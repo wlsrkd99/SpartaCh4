@@ -34,6 +34,7 @@ AAircraftPawn::AAircraftPawn()
 	RotationSpeed = 50.f;
 	MouseWheelRollAmount = 5.f;
 	Gravity = -980.f;
+	AirControlRatio = 0.4f;
 
 	MoveInput = FVector3d::ZeroVector;
 	LookInput = FVector2D::ZeroVector;
@@ -45,7 +46,10 @@ void AAircraftPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
-	const FVector LocalOffset = MoveInput * NormalSpeed * DeltaSeconds;
+	CheckGroundStatus();
+	
+	const float CurrentSpeed = bIsOnGround ? NormalSpeed : NormalSpeed * AirControlRatio;
+	const FVector LocalOffset = MoveInput * CurrentSpeed * DeltaSeconds;
 	AddActorLocalOffset(LocalOffset, true);
 
 	FRotator DeltaRotation(LookInput.Y * RotationSpeed * DeltaSeconds, LookInput.X * RotationSpeed * DeltaSeconds, RollKeyInput * RotationSpeed * DeltaSeconds);
@@ -58,21 +62,6 @@ void AAircraftPawn::ApplyGravity(float DeltaSeconds)
 {
 	if (MoveInput.IsNearlyZero())
 	{
-		FHitResult HitResult;
-		const float CapsuleHalfHeight = CapsuleComp->GetScaledCapsuleHalfHeight();
-		const FVector TraceStart = GetActorLocation();
-		const FVector TraceEnd = TraceStart - FVector(0.f, 0.f, CapsuleHalfHeight + 5.f);
-		FCollisionQueryParams CollisionParams;
-		CollisionParams.AddIgnoredActor(this);
-
-		const bool bIsOnGround = GetWorld()->LineTraceSingleByChannel(
-			HitResult,
-			TraceStart,
-			TraceEnd,
-			ECollisionChannel::ECC_Visibility,
-			CollisionParams
-		);
-
 		if (bIsOnGround)
 		{
 			FallSpeed = 0.f;
@@ -193,4 +182,21 @@ void AAircraftPawn::RollByMouse(const FInputActionValue& value)
 {
 	const float RollValue = value.Get<float>();
 	AddActorLocalRotation(FRotator(0.f, 0.f, RollValue * MouseWheelRollAmount));
+}
+
+void AAircraftPawn::CheckGroundStatus()
+{
+	FHitResult HitResult;
+	const float CapsuleHalfHeight = CapsuleComp->GetScaledCapsuleHalfHeight();
+	const FVector TraceStart = GetActorLocation();
+	const FVector TraceEnd = TraceStart - FVector(0.f, 0.f, CapsuleHalfHeight + 5.f);
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	bIsOnGround = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		ECollisionChannel::ECC_Visibility,
+		CollisionParams);
 }
