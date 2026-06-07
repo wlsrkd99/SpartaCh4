@@ -6,7 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Controller/SpartaPlayerController.h"
+#include "Controller/AircaftPlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 
 
@@ -31,14 +31,23 @@ AAircraftPawn::AAircraftPawn()
 	CameraComp->bUsePawnControlRotation = false;
     
 	NormalSpeed = 600.0f;
+	RotationSpeed = 50.f;
+	MouseWheelRollAmount = 5.f;
+
+	MoveInput = FVector3d::ZeroVector;
+	LookInput = FVector2D::ZeroVector;
+	RollKeyInput = 0.f;
 }
 
 void AAircraftPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
-	const FVector LocalOffset = FVector(MoveInput.X, MoveInput.Y, 0.f) * NormalSpeed * DeltaSeconds;
+	const FVector LocalOffset = MoveInput * NormalSpeed * DeltaSeconds;
 	AddActorLocalOffset(LocalOffset, true);
+
+	FRotator DeltaRotation(LookInput.Y * RotationSpeed * DeltaSeconds, LookInput.X * RotationSpeed * DeltaSeconds, RollKeyInput * RotationSpeed * DeltaSeconds);
+	AddActorLocalRotation(DeltaRotation, true);
 }
 
 void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -46,7 +55,7 @@ void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		if (ASpartaPlayerController* PlayerController = Cast<ASpartaPlayerController>(GetController()))
+		if (AAircaftPlayerController* PlayerController = Cast<AAircaftPlayerController>(GetController()))
 		{
 			if (PlayerController->MoveAction)
 			{
@@ -72,7 +81,39 @@ void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 					this,
 					&AAircraftPawn::Look
 				);
-			}  
+				EnhancedInput->BindAction(
+					PlayerController->LookAction,
+					ETriggerEvent::Completed,
+					this,
+					&AAircraftPawn::LookCompleted
+				);
+			}
+
+			if (PlayerController->RollKeyAction)
+			{
+				EnhancedInput->BindAction(
+					PlayerController->RollKeyAction,
+					ETriggerEvent::Triggered,
+					this,
+					&AAircraftPawn::RollByKey
+				);
+				EnhancedInput->BindAction(
+					PlayerController->RollKeyAction,
+					ETriggerEvent::Completed,
+					this,
+					&AAircraftPawn::RollByKeyCompleted
+				);
+			}
+
+			if (PlayerController->RollMouseAction)
+			{
+				EnhancedInput->BindAction(
+					PlayerController->RollMouseAction,
+					ETriggerEvent::Triggered,
+					this, 
+					&AAircraftPawn::RollByMouse
+				);
+			}
 		}
 	}
 }
@@ -80,17 +121,36 @@ void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 void AAircraftPawn::Move(const FInputActionValue& value)
 {
 	if (!Controller) return;
-	MoveInput = value.Get<FVector2d>();
+	MoveInput = value.Get<FVector3d>();
 }
 
 void AAircraftPawn::MoveCompleted(const FInputActionValue& value)
 {
-	MoveInput = FVector2d::ZeroVector;
+	MoveInput = FVector3d::ZeroVector;
 }
 
 void AAircraftPawn::Look(const FInputActionValue& value)
 {
-	const FVector2D LookAxis = value.Get<FVector2D>();
-	AddActorLocalRotation(FRotator(LookAxis.Y, LookAxis.X, 0.f));
+	LookInput = value.Get<FVector2D>();
 }
 
+void AAircraftPawn::LookCompleted(const FInputActionValue& value)
+{
+	LookInput = FVector2D::ZeroVector;
+}
+
+void AAircraftPawn::RollByKey(const FInputActionValue& value)
+{
+	RollKeyInput = value.Get<float>();
+}
+
+void AAircraftPawn::RollByKeyCompleted(const FInputActionValue& value)
+{
+	RollKeyInput = 0.f;
+}
+
+void AAircraftPawn::RollByMouse(const FInputActionValue& value)
+{
+	const float RollValue = value.Get<float>();
+	AddActorLocalRotation(FRotator(0.f, 0.f, RollValue * MouseWheelRollAmount));
+}
