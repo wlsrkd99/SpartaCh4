@@ -33,10 +33,12 @@ AAircraftPawn::AAircraftPawn()
 	NormalSpeed = 600.0f;
 	RotationSpeed = 50.f;
 	MouseWheelRollAmount = 5.f;
+	Gravity = -980.f;
 
 	MoveInput = FVector3d::ZeroVector;
 	LookInput = FVector2D::ZeroVector;
 	RollKeyInput = 0.f;
+	FallSpeed = 0.f;
 }
 
 void AAircraftPawn::Tick(float DeltaSeconds)
@@ -48,6 +50,44 @@ void AAircraftPawn::Tick(float DeltaSeconds)
 
 	FRotator DeltaRotation(LookInput.Y * RotationSpeed * DeltaSeconds, LookInput.X * RotationSpeed * DeltaSeconds, RollKeyInput * RotationSpeed * DeltaSeconds);
 	AddActorLocalRotation(DeltaRotation, true);
+	
+	ApplyGravity(DeltaSeconds);
+}
+
+void AAircraftPawn::ApplyGravity(float DeltaSeconds)
+{
+	if (MoveInput.IsNearlyZero())
+	{
+		FHitResult HitResult;
+		const float CapsuleHalfHeight = CapsuleComp->GetScaledCapsuleHalfHeight();
+		const FVector TraceStart = GetActorLocation();
+		const FVector TraceEnd = TraceStart - FVector(0.f, 0.f, CapsuleHalfHeight + 5.f);
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this);
+
+		const bool bIsOnGround = GetWorld()->LineTraceSingleByChannel(
+			HitResult,
+			TraceStart,
+			TraceEnd,
+			ECollisionChannel::ECC_Visibility,
+			CollisionParams
+		);
+
+		if (bIsOnGround)
+		{
+			FallSpeed = 0.f;
+		}
+		else
+		{
+			FallSpeed += Gravity * DeltaSeconds;
+		}
+	
+		AddActorWorldOffset(FVector(0.f, 0.f, FallSpeed * DeltaSeconds), true);
+	}
+	else
+	{
+		FallSpeed = 0.f;
+	}
 }
 
 void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

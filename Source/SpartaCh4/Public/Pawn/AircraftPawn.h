@@ -31,6 +31,8 @@ protected:
 	float RotationSpeed;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn|Movement")
 	float MouseWheelRollAmount;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn|Movement")
+	float Gravity;
 	
 private:
 	void Move(const FInputActionValue& value);
@@ -40,10 +42,12 @@ private:
 	void RollByKey(const FInputActionValue& value);
 	void RollByKeyCompleted(const FInputActionValue& value);
 	void RollByMouse(const FInputActionValue& value);
+	void ApplyGravity(float DeltaSeconds);
 	
 	FVector3d MoveInput;
 	FVector2D LookInput;
 	float RollKeyInput;
+	float FallSpeed;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Pawn|Camera")
